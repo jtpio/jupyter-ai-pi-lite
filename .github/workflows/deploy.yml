@@ -1,0 +1,96 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          # setup-uv reads the uv pin from the "release" dependency group of pyproject.toml
+          version-file: pyproject.toml
+          enable-cache: true
+
+      # build extensions
+      - name: Install jlpm
+        run: pip install "jupyterlab>=4.0.0,<5"
+
+      - name: Build JavaScript extensions
+        run: |
+          jlpm install
+          jlpm build:prod
+
+      # Install the projects
+      - name: Set up Python
+        run: uv python install
+        working-directory: ./demo
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+        working-directory: ./demo
+
+      # Build Jupyterlite assets
+      - name: Copy files
+        run: |
+          mkdir contents
+          cp README.md contents
+        working-directory: ./demo
+
+      - name: Install micromamba for the terminal WebAssembly packages
+        uses: mamba-org/setup-micromamba@v3
+
+      - name: Build the JupyterLite site
+        run: |
+          uv run jupyter lite build
+        working-directory: ./demo
+
+      # Install playwright and test that extension is loaded in the deployment
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install
+          npx playwright install chromium --with-deps
+        working-directory: ./demo
+
+      - name: Test chat extension loads in JupyterLite
+        run: npx playwright test
+        working-directory: ./demo
+
+      # Upload artifacts
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./demo/dist
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

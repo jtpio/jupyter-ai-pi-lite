@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling", "hatch-nodejs-version>=0.3.2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jupyter-ai-pi-monorepo"
+description = "Monorepo root for the pi coding agent persona of Jupyter AI"
+readme = "README.md"
+license = { file = "LICENSE" }
+dynamic = ["version"]
+
+[dependency-groups]
+release = ["uv==0.12.17"]
+
+[tool.hatch.version]
+source = "nodejs"
+
+[tool.hatch.build.targets.wheel]
+packages = []
+
+[tool.hatch.build.targets.sdist]
+include = []
+
+[tool.jupyter-releaser]
+skip = ["check-python"]
+
+[tool.jupyter-releaser.options]
+version_cmd = "cd ../.. && python scripts/bump_version.py --skip-if-dirty"
+python_packages = [
+    "python/jupyter-ai-pi",
+    "python/jupyter-ai-pi-terminal"
+]
+
+[tool.jupyter-releaser.hooks]
+before-build-npm = [
+    "python -m pip install 'jupyterlab>=4.0.0,<5'",
+    "YARN_ENABLE_IMMUTABLE_INSTALLS=0 jlpm",
+    "jlpm build:prod"
+]
+before-build-python = ["jlpm clean:all"]
+before-bump-version = [
+    "python -m pip install -U jupyterlab",
+    "python -m pip install --group release",
+    "jlpm"
+]
+
+[tool.check-wheel-contents]
+ignore = ["W002"]

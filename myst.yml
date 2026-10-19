@@ -1,0 +1,23 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 2cd0dbd8-7ff6-40c3-b74e-7057b3ebec65
+  title: Jupyter AI Pi
+  description: The pi coding agent as an in-browser persona of Jupyter AI, in JupyterLab and JupyterLite
+  keywords:
+    - jupyter
+    - jupyterlab
+    - jupyterlite
+    - ai
+    - llm
+    - chat
+    - pi
+  github: https://github.com/jtpio/jupyter-ai-pi-lite
+  toc:
+    - file: docs/index.md
+site:
+  template: book-theme
+  options:
+    logo_text: Jupyter AI Pi
+    favicon: docs/favicon.ico
+    style: docs/custom.css

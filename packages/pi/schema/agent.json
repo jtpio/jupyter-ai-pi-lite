@@ -1,0 +1,14 @@
+{
+  "title": "Pi",
+  "description": "Settings of the pi coding agent",
+  "type": "object",
+  "properties": {
+    "useSecretsManager": {
+      "type": "boolean",
+      "title": "Use the secrets manager",
+      "description": "Keep the API keys of pi in the secrets manager, not in the storage of the browser. With the default secrets connector, the keys stay in memory only: they go away when the page reloads. When the secrets manager is not available, pi keeps the keys in the browser storage.",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

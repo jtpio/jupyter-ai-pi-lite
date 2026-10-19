@@ -1,0 +1,155 @@
+*.bundle.*
+lib/
+node_modules/
+packages/*/lib/
+packages/*/node_modules/
+packages/*/tsconfig.tsbuildinfo
+*.log
+.eslintcache
+.stylelintcache
+*.egg-info/
+.ipynb_checkpoints
+*.tsbuildinfo
+python/jupyter-ai-pi/jupyter_ai_pi/labextension
+python/jupyter-ai-pi-terminal/jupyter_ai_pi_terminal/labextension
+
+# Created by https://www.gitignore.io/api/python
+# Edit at https://www.gitignore.io/?templates=python
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# vscode project settings
+.vscode
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# End of https://www.gitignore.io/api/python
+
+# OSX files
+.DS_Store
+
+# Yarn cache
+.yarn/
+
+# JupyterLite
+_output
+*.doit.db
+
+# Jupyter
+Untitled*.ipynb
+
+# Integration tests
+ui-tests/test-results/
+ui-tests/playwright-report/
+ui-tests/.jupyter_ystore.db
+ui-tests/.jupyter/
+
+# LiteLLM config
+litellm_config.yaml
+
+# MyST build outputs
+_build
+docs/_changelog_content.md
+
+# Temporary files
+tmp
+
+# JupyterLite terminal build artifacts (cockle wasm packages)
+demo/cockle_wasm_env
+demo/cockle-config.json
+demo/.cockle_temp
+demo/cockle-files.txt
