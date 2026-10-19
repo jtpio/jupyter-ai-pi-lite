@@ -12,15 +12,12 @@ import type { TranslationBundle } from '@jupyterlab/translation';
 import { Signal, type ISignal } from '@lumino/signaling';
 import React, { useEffect, useState } from 'react';
 
+import piSvgstr from '../style/icons/pi.svg';
 import type { PiAgent } from './agent';
 import type { PiChatSession } from './runtime';
 import { PI_PERSONA_ID } from './tokens';
 
-const PI_AVATAR =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#111827"/><text x="16" y="22.5" font-family="Georgia, serif" font-size="20" fill="#fff" text-anchor="middle">π</text></svg>'
-  );
+const PI_AVATAR = 'data:image/svg+xml,' + encodeURIComponent(piSvgstr);
 
 /**
  * The chat user of the pi persona.

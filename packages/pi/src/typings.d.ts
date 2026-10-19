@@ -1,4 +1,12 @@
 /**
+ * The builder loads the SVG files that the code imports as strings.
+ */
+declare module '*.svg' {
+  const value: string;
+  export default value;
+}
+
+/**
  * pi modules that the package exports map hides; the build aliases
  * `pi-coding-agent-package` to the package folder.
  */
