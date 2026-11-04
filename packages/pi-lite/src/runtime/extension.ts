@@ -1,12 +1,10 @@
-import {
-  keyHint,
-  type ExtensionAPI,
-  type ExtensionContext,
-  type ExtensionFactory,
-  type McpServerConfig,
-  type ToolDefinition
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  ExtensionFactory,
+  McpServerConfig,
+  ToolDefinition
 } from '@earendil-works/pi-coding-agent';
-import type { TSchema } from '@earendil-works/pi-ai';
 import { Text } from '@earendil-works/pi-tui';
 import {
   extractMimeBundles,
@@ -190,7 +188,8 @@ function commandList(output: unknown): string | undefined {
 const renderResult: NonNullable<ToolDefinition['renderResult']> = (
   result,
   { expanded },
-  theme
+  theme,
+  { keyHint }
 ) => {
   let output = result.content
     .map(part => (part.type === 'text' ? part.text : ''))
@@ -237,7 +236,7 @@ function bridgeTool(name: string, tool: ITool, host: PiHost): ToolDefinition {
     description,
     promptSnippet: description.split(/(?<=\.)\s/)[0],
     promptGuidelines: TOOL_GUIDELINES[name],
-    parameters: getToolInputSchema(tool) as unknown as TSchema,
+    parameters: getToolInputSchema(tool) as ToolDefinition['parameters'],
     renderResult,
     async execute(toolCallId, params, signal) {
       if (!tool.execute) {
