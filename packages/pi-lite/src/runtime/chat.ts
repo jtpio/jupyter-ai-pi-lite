@@ -1043,7 +1043,7 @@ export class PiChatSession {
 
   /**
    * Whether an edited message keeps its rich content: a chat synchronized by
-   * a Jupyter server (jupyterlab-chat 0.25, private `_wsHandler`) drops it.
+   * a Jupyter server (jupyterlab-chat 0.26, private `_wsHandler`) drops it.
    * There, a tool call is posted when it waits for an approval and when it
    * ends, not updated.
    */

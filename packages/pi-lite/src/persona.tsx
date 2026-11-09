@@ -1,5 +1,6 @@
 import type { PersonaSessionRegistry } from '@jupyter-ai/persona-manager';
 import {
+  InputToolbarRegistry,
   TooltippedIconButton,
   type IChatModel,
   type IChatPanel,
@@ -417,7 +418,9 @@ export async function attachPiChat(
   const toolbar = panel.widget.inputToolbarRegistry;
   if (toolbar && !toolbar.get(STOP_ITEM)) {
     toolbar.addItem(STOP_ITEM, {
-      element: () => <PiStopButton chat={chat} />,
+      createWidget: InputToolbarRegistry.createReactToolbarItem(() => (
+        <PiStopButton chat={chat} />
+      )),
       position: 7
     });
     toolbar.hide(STOP_ITEM);
