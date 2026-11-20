@@ -91,12 +91,6 @@ const BROWSER_OPTIONS = new Set([
 const TERMINAL_INSTRUCTIONS =
   'You run in pi, the coding agent, inside a JupyterLite terminal. Answers are rendered as markdown in the terminal: rich MIME outputs and images are not displayed.';
 
-type ProcessShim = typeof process & {
-  ProcessExit: new (code: number) => Error & { code: number };
-};
-
-const processShim = process as ProcessShim;
-
 /**
  * The project trust question in the terminal, as pi asks it before its
  * interactive mode starts.
@@ -179,7 +173,7 @@ class CockleTerminal implements Terminal {
     this._size = this._readSize();
     const input = (data: string) => {
       if (this._running) {
-        processShim.chdir(this._cwd);
+        process.chdir(this._cwd);
         onInput(data);
       }
     };
@@ -422,10 +416,11 @@ export async function runTerminal(
     context.stderr.write(`pi: run pi in ${DRIVE} or one of its folders\r\n`);
     return 1;
   }
-  processShim.chdir(cwd);
+  process.chdir(cwd);
 
-  const files = await readFileArgs(args.fileArgs, cwd);
-  const sessionManager = await openSession(args, cwd);
+  const drive = host.operations;
+  const files = await readFileArgs(drive, args.fileArgs, cwd);
+  const sessionManager = await openSession(drive, args, cwd);
   if (args.name !== undefined) {
     sessionManager.appendSessionInfo(args.name.trim());
   }
@@ -466,7 +461,7 @@ export async function runTerminal(
     runtime.importFromJsonl = async (inputPath, cwdOverride) => {
       const file = resolveToCwd(inputPath, cwd);
       // pi reports a file that it cannot read.
-      await loadDriveFile(file).catch(() => undefined);
+      await loadDriveFile(drive, file).catch(() => undefined);
       return importFromJsonl(file, cwdOverride);
     };
     initTheme(runtime.services.settingsManager.getTheme(), false);
@@ -548,12 +543,16 @@ function argumentErrors(argv: string[], args: Args): string[] {
  * The session of the command line, in the order of pi. With `--resume`, pi
  * starts in a new session and shows its session selector.
  */
-async function openSession(args: Args, cwd: string): Promise<SessionManager> {
+async function openSession(
+  drive: DriveOperations,
+  args: Args,
+  cwd: string
+): Promise<SessionManager> {
   if (args.noSession) {
     return SessionManager.inMemory(cwd);
   }
   if (args.session) {
-    return SessionManager.open(await findSession(args.session, cwd));
+    return SessionManager.open(await findSession(drive, args.session, cwd));
   }
   return args.continue && !args.resume
     ? SessionManager.continueRecent(cwd)
@@ -564,10 +563,14 @@ async function openSession(args: Args, cwd: string): Promise<SessionManager> {
  * The file of a `--session` argument: a path, or the ID (or the start of the
  * ID) of a session of the directory.
  */
-async function findSession(session: string, cwd: string): Promise<string> {
+async function findSession(
+  drive: DriveOperations,
+  session: string,
+  cwd: string
+): Promise<string> {
   if (session.includes('/') || session.endsWith('.jsonl')) {
     const file = resolveToCwd(session, cwd);
-    await loadDriveFile(file);
+    await loadDriveFile(drive, file);
     return file;
   }
   const file =
@@ -585,10 +588,10 @@ async function findSession(session: string, cwd: string): Promise<string> {
  * message.
  */
 async function readFileArgs(
+  drive: DriveOperations,
   fileArgs: string[],
   cwd: string
 ): Promise<{ text: string; images: ImageContent[] }> {
-  const { drive } = fs as unknown as { drive: DriveOperations };
   let text = '';
   const images: ImageContent[] = [];
   for (const fileArg of fileArgs) {
@@ -614,11 +617,13 @@ async function readFileArgs(
  * folder of the session, which pi checks. A missing file is not an error:
  * pi starts a new session at its path. The agent folder is already in memfs.
  */
-async function loadDriveFile(file: string): Promise<void> {
+async function loadDriveFile(
+  drive: DriveOperations,
+  file: string
+): Promise<void> {
   if (toContentsPath(file) === null || isAgentPath(file)) {
     return;
   }
-  const { drive } = fs as unknown as { drive: DriveOperations };
   let data: Buffer;
   try {
     data = await drive.readFile(file);
@@ -678,7 +683,7 @@ function runUntilExit(
       }
       done = true;
       signal?.removeEventListener('abort', hangup);
-      if (error instanceof processShim.ProcessExit) {
+      if (error instanceof process.ProcessExit) {
         resolve({ code: error.code, disposed: name === 'shutdown' });
         return;
       }
@@ -687,7 +692,7 @@ function runUntilExit(
     };
     const hangup = () => {
       stopMode(mode);
-      settle(new processShim.ProcessExit(HANGUP_EXIT_CODE), 'hangup');
+      settle(new process.ProcessExit(HANGUP_EXIT_CODE), 'hangup');
     };
 
     const target = mode as unknown as Record<

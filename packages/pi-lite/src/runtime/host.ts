@@ -152,14 +152,10 @@ export class PiHost {
       this._revert(contentsPath)
     );
     this._mirror = new DriveMirror(this._operations);
-    (fs as unknown as { drive: DriveOperations }).drive = this._operations;
+    fs.drive = this._operations;
     this._credentials = new PiCredentials(options.secrets);
     this._credentials.changed.connect(() => this._configChanged.emit());
-    (
-      childProcess as unknown as {
-        commands: Map<string, ReturnType<typeof fdCommand>>;
-      }
-    ).commands.set('fd', fdCommand(this._operations));
+    childProcess.commands.set('fd', fdCommand(this._operations));
     this.ready = restoreAgentDir({
       contents,
       drive: this._operations,

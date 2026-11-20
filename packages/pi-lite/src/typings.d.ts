@@ -7,6 +7,58 @@ declare module '*.svg' {
 }
 
 /**
+ * The members that the Node shims of the build (`shims/`) add to the modules
+ * of Node.
+ */
+declare module 'fs' {
+  /**
+   * The in-memory volume of the module.
+   */
+  const vol: import('memfs').Volume;
+
+  /**
+   * Reads the JupyterLab files, which are not in memory. The host sets it.
+   */
+  let drive:
+    | {
+        access(absolutePath: string): Promise<void>;
+        readFile(absolutePath: string): Promise<Buffer>;
+      }
+    | undefined;
+
+  /**
+   * Lists a directory of the JupyterLab files for `readdirSync`, while the
+   * path completion sets it.
+   */
+  let listDrive: ((directory: string) => object[]) | undefined;
+
+  /**
+   * Called with each path that changes.
+   */
+  let onChange: ((changed: string) => void) | undefined;
+}
+
+declare module 'child_process' {
+  /**
+   * The commands that `spawn` runs in the page: they resolve with the
+   * standard output.
+   */
+  const commands: Map<
+    string,
+    (args: string[], signal: AbortSignal) => Promise<string>
+  >;
+}
+
+declare namespace NodeJS {
+  interface Process {
+    /**
+     * The error that `process.exit` throws.
+     */
+    ProcessExit: new (code: number) => Error & { code: number };
+  }
+}
+
+/**
  * pi modules that the package exports map hides; the build aliases
  * `pi-coding-agent-package` to the package folder.
  */

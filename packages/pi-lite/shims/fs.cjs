@@ -5,11 +5,6 @@
 const { Volume, createFsFromVolume } = require('memfs');
 const path = require('path');
 const { env } = require('process');
-const piPackage = require('pi-coding-agent-package/package.json');
-const darkTheme = require('pi-coding-agent-package/dist/modes/interactive/theme/dark.json');
-const lightTheme = require('pi-coding-agent-package/dist/modes/interactive/theme/light.json');
-const readme = require('pi-coding-agent-package/README.md');
-const docs = require.context('pi-coding-agent-package/docs', false, /\.md$/);
 
 const vol = new Volume();
 const fs = createFsFromVolume(vol);
@@ -133,20 +128,7 @@ fs.readdirSync = function (target, ...args) {
   return readdirSync.call(this, target, ...args);
 };
 
-vol.fromJSON({
-  '/pi/package.json': JSON.stringify({
-    name: piPackage.name,
-    version: piPackage.version,
-    piConfig: piPackage.piConfig
-  }),
-  '/pi/README.md': readme,
-  '/pi/dist/modes/interactive/theme/dark.json': JSON.stringify(darkTheme),
-  '/pi/dist/modes/interactive/theme/light.json': JSON.stringify(lightTheme),
-  ...Object.fromEntries(
-    docs.keys().map(key => [`/pi/docs/${key.slice(2)}`, docs(key)])
-  ),
-  ...__PI_FILES__
-});
+vol.fromJSON(__PI_FILES__);
 vol.mkdirSync('/tmp', { recursive: true });
 
 module.exports = fs;

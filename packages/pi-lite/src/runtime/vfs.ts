@@ -3,7 +3,6 @@ import { PageConfig } from '@jupyterlab/coreutils';
 import type { Contents } from '@jupyterlab/services';
 import { nullTranslator, type ITranslator } from '@jupyterlab/translation';
 import fs from 'fs';
-import type { Volume } from 'memfs';
 import path from 'path';
 
 import { errorMessage } from '../utils';
@@ -106,7 +105,7 @@ const SKIPPED_RESOURCES = new Set(['extensions', 'sessions', 'node_modules']);
 const MAX_MIRRORED_FILES = 500;
 const MAX_MIRRORED_SIZE = 512 * 1024;
 
-export const volume = (fs as unknown as { vol: Volume }).vol;
+export const volume = fs.vol;
 
 /**
  * A file of the agent folder: pi orders the sessions by modification time.
@@ -693,8 +692,7 @@ async function restore(options: IRestoreOptions): Promise<void> {
   reloading = Promise.all([loadPrivate, loadDrive]).then(() => undefined);
   options.contents.fileChanged.connect(onDriveChange);
   await reloading;
-  (fs as unknown as { onChange: (changed: string) => void }).onChange =
-    onChange;
+  fs.onChange = onChange;
   window.addEventListener('beforeunload', onBeforeUnload);
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => {

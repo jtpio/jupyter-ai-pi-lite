@@ -15,9 +15,6 @@ export function driveAutocomplete(
 ): AutocompleteProviderFactory {
   let listing:
     { directory: string; time: number; entries: Contents.IModel[] } | undefined;
-  const shim = fs as unknown as {
-    listDrive?: (directory: string) => object[];
-  };
   const load = async (directory: string): Promise<void> => {
     // pi suggests nothing in a directory that cannot be listed.
     const entries = await operations
@@ -35,7 +32,7 @@ export function driveAutocomplete(
       // pi lists the directory before its first await: the drive listings
       // apply to this call only.
       const suggest = () => {
-        shim.listDrive = directory => {
+        fs.listDrive = directory => {
           if (
             listing?.directory !== directory ||
             Date.now() - listing.time > SUGGESTION_TTL_MS
@@ -52,7 +49,7 @@ export function driveAutocomplete(
         try {
           return current.getSuggestions(lines, line, column, options);
         } finally {
-          shim.listDrive = undefined;
+          fs.listDrive = undefined;
         }
       };
       const suggestions = suggest();
