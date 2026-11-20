@@ -16,9 +16,6 @@ EXTENSION_PACKAGES = [
     "python/jupyter-ai-pi-lite",
 ]
 
-# Meta-packages with no labextension
-META_PACKAGES = []
-
 # JupyterLab cannot load these: they need modules that only JupyterLite provides.
 LITE_PACKAGES = [
     "python/jupyter-ai-pi-lite-terminal",
@@ -31,7 +28,7 @@ def main() -> None:
     extensions = EXTENSION_PACKAGES + ([] if "--no-lite" in sys.argv else LITE_PACKAGES)
     root = Path(__file__).resolve().parent.parent
 
-    for package in extensions + META_PACKAGES:
+    for package in extensions:
         pkg_path = root / package
         spec = str(pkg_path)
         if extras:
