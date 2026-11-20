@@ -57,8 +57,6 @@ uv run jupyter lite serve
 jlpm build && jlpm update:demo
 ```
 
-Then refresh the page at http://127.0.0.1:8000/.
-
 Rebuild the whole site with `uv sync` and `uv run jupyter lite build` after changing the demo dependencies (`demo/pyproject.toml`), its configuration (`demo/jupyter-lite.json`, `demo/overrides.json`) or its contents.
 
 ## Contributing to documentation
