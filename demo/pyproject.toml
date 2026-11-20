@@ -11,7 +11,7 @@ dependencies = [
     "jupyterlab-night>=0.5.2",
     "jupyter-ai-pi-lite",
     "jupyter-ai-pi-lite-terminal",
-    "jupyterlite-terminal>=1.6.2",
+    "jupyterlite-terminal>=1.8.0",
     "jupyterlite-core>=0.8.6",
     "jupyterlite-pyodide-kernel>=0.8.5",
 ]

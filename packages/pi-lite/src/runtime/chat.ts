@@ -92,10 +92,6 @@ interface IToolCallState {
   permission?: 'pending' | 'resolved';
   selectedOptionId?: string;
   messageId?: Promise<string | undefined>;
-  /**
-   * Whether the final state was posted, in chats that cannot update it.
-   */
-  posted?: boolean;
 }
 
 /**
@@ -1027,25 +1023,7 @@ export class PiChatSession {
       data: { [COMPONENTS_MIME]: 'grouped-tool-calls' },
       metadata: { toolCalls: [entry] }
     };
-    if (!this._editsKeepRichContent) {
-      const final = tool.status !== 'awaiting_approval';
-      if (tool.status !== 'in_progress' && !(final && tool.posted)) {
-        tool.posted ||= final;
-        await this._send({ body: '', mime_model });
-      }
-      return;
-    }
     await this._render(tool, { body: '', mime_model });
-  }
-
-  /**
-   * Whether an edited message keeps its rich content: a chat synchronized by
-   * a Jupyter server (jupyterlab-chat 0.26, private `_wsHandler`) drops it.
-   * There, a tool call is posted when it waits for an approval and when it
-   * ends, not updated.
-   */
-  private get _editsKeepRichContent(): boolean {
-    return !(this._model as { _wsHandler?: unknown })._wsHandler;
   }
 
   private _notice(text: string): void {

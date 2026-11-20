@@ -13,7 +13,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import type { Contents } from '@jupyterlab/services';
 import fs from 'fs';
-import { minimatch } from 'minimatch';
+import { Minimatch, minimatch } from 'minimatch';
 import { resolveToCwd } from 'pi-coding-agent-package/dist/core/tools/path-utils.js';
 import path from 'path';
 
@@ -142,19 +142,33 @@ function imageType(absolutePath: string): string | undefined {
 }
 
 /**
- * A glob matcher with the rules of fd in pi's find tool: a pattern with a
- * slash matches the full path, other patterns match the name.
+ * A glob matcher with the rules of pi's find tool: a pattern with a slash
+ * matches the path from the search directory (the full path when the pattern
+ * is absolute), other patterns match the name. As fd does, a pattern in lower
+ * case ignores the case.
  */
-function findMatcher(pattern: string): (absolutePath: string) => boolean {
-  if (!pattern.includes('/')) {
+function findMatcher(
+  pattern: string,
+  root: string
+): (absolutePath: string) => boolean {
+  const glob = pattern.replace(/^(?:\.\/)+/, '');
+  const options = {
+    dot: true,
+    noext: true,
+    nocase: glob === glob.toLowerCase()
+  };
+  if (!glob.includes('/')) {
     return absolutePath =>
-      minimatch(path.posix.basename(absolutePath), pattern, { dot: true });
+      minimatch(path.posix.basename(absolutePath), glob, options);
   }
-  const full =
-    pattern.startsWith('/') || pattern.startsWith('**/') || pattern === '**'
-      ? pattern
-      : `**/${pattern}`;
-  return absolutePath => minimatch(absolutePath, full, { dot: true });
+  // minimatch also matches `src` with `src/**`, fd does not.
+  const matcher = new Minimatch(glob.replace(/\/\*\*$/, '/**/*'), options);
+  return absolutePath =>
+    matcher.match(
+      glob.startsWith('/')
+        ? absolutePath
+        : path.posix.relative(root, absolutePath)
+    );
 }
 
 /**
@@ -360,7 +374,7 @@ export class DriveOperations
     cwd: string,
     options: { ignore: string[]; limit: number }
   ): Promise<string[]> => {
-    const matches = findMatcher(pattern);
+    const matches = findMatcher(pattern, cwd);
     const results: string[] = [];
     const notice = await this.walk(
       cwd,
@@ -622,8 +636,10 @@ export function createGrepTool(
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const base = ctx?.cwd || cwd;
       const root = resolveToCwd(params.path || '.', base);
-      const limit = Math.max(1, params.limit ?? DEFAULT_GREP_LIMIT);
+      const limit = Math.max(1, Math.floor(params.limit ?? DEFAULT_GREP_LIMIT));
       const context = Math.max(0, Math.floor(params.context ?? 0));
+      // As pi does: ripgrep matches nothing with a leading `./`.
+      const glob = params.glob?.replace(/^(?:\.\/)+/, '');
       const regex = new RegExp(
         params.literal
           ? params.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -646,8 +662,8 @@ export function createGrepTool(
             }
             const relative = path.posix.relative(root, absolutePath);
             if (
-              !params.glob ||
-              minimatch(relative, params.glob, { dot: true, matchBase: true })
+              !glob ||
+              minimatch(relative, glob, { dot: true, matchBase: true })
             ) {
               files.push(absolutePath);
             }

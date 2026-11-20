@@ -3,8 +3,6 @@
  */
 const { EventEmitter } = require('events');
 
-const HOME = '/home/user';
-
 class ProcessExit extends Error {
   constructor(code) {
     super(`process.exit(${code})`);
@@ -19,7 +17,14 @@ class StdStream extends EventEmitter {
     this.isTTY = false;
     this.writableLength = 0;
   }
-  write() {
+  /**
+   * pi waits for the callback of an empty write before it exits.
+   */
+  write(chunk, encoding, callback) {
+    const done = typeof encoding === 'function' ? encoding : callback;
+    if (done) {
+      queueMicrotask(done);
+    }
     return true;
   }
   setRawMode() {
@@ -41,7 +46,7 @@ const proc = new EventEmitter();
 Object.assign(proc, {
   ProcessExit,
   env: {
-    HOME,
+    HOME: '/home/user',
     USER: 'user',
     SHELL: '/bin/sh',
     PATH: '/usr/bin:/bin',

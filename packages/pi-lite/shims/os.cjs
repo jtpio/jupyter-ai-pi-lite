@@ -1,5 +1,7 @@
+const { env } = require('process');
+
 module.exports = {
-  homedir: () => '/home/user',
+  homedir: () => env.HOME,
   tmpdir: () => '/tmp',
   release: () => '6.0.0-browser',
   constants: { signals: {} }

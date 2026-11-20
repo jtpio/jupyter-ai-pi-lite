@@ -1,7 +1,7 @@
 /**
- * Let pi (written for Node) run in the browser: Node built-ins map to the
- * shims, a few pi modules are replaced, and the Node globals are provided to
- * the modules of this extension only.
+ * Let pi (written for Node) run in the browser: the Node built-ins, some
+ * packages and a few pi modules map to the shims, and the Node globals are
+ * provided to the modules of this extension only.
  */
 const fs = require('fs');
 const path = require('path');
@@ -28,6 +28,7 @@ function findPackageDir(name) {
 }
 
 const piPackageDir = findPackageDir('@earendil-works/pi-coding-agent');
+const pi = file => path.join(piPackageDir, file);
 
 const BUILTINS = {
   buffer: shim('buffer.cjs'),
@@ -53,89 +54,85 @@ const BUILTINS = {
   zlib: shim('empty.cjs')
 };
 
-const PACKAGES = {
+/**
+ * The packages and the pi modules that need a process, a binary or a file of
+ * the computer.
+ */
+const REPLACED = {
   'cross-spawn': shim('child-process.cjs'),
   jiti: shim('jiti.cjs'),
   'jiti/static': shim('jiti.cjs'),
-  'pi-coding-agent-package': piPackageDir,
   'process/browser': shim('process.cjs'),
   'proper-lockfile': shim('lockfile.cjs'),
-  undici: shim('undici.cjs')
+  undici: shim('undici.cjs'),
+  [pi('dist/utils/clipboard.js')]: shim('clipboard.js'),
+  [pi('dist/utils/clipboard-image.js')]: shim('clipboard.js'),
+  [pi('dist/utils/open-browser.js')]: shim('open-browser.js'),
+  [pi('dist/utils/photon.js')]: shim('photon.js'),
+  [pi('dist/utils/tools-manager.js')]: shim('tools-manager.js')
 };
 
-const EXPORT_HTML_FILES = [
-  'dist/core/export-html/template.html',
-  'dist/core/export-html/template.css',
-  'dist/core/export-html/template.js',
-  'dist/core/export-html/vendor/marked.min.js',
-  'dist/core/export-html/vendor/marked-cjk-friendly.min.js',
-  'dist/core/export-html/vendor/highlight.min.js'
-];
-
 /**
- * The changelog entries of the major version of pi, for `/changelog` and the
- * "What's New" of pi: the whole file is large.
+ * The files that pi reads from its own package with readFileSync, by their
+ * path in the fs shim, which seeds them. Of the changelog (`/changelog`,
+ * "What's New"), only the entries of the major version of pi: the whole file
+ * is large.
  */
-function currentChangelog() {
-  const text = fs.readFileSync(path.join(piPackageDir, 'CHANGELOG.md'), 'utf8');
-  const major = require(path.join(piPackageDir, 'package.json')).version.split(
-    '.'
-  )[0];
-  const older = text.search(new RegExp(`^## \\[(?!${major}\\.)`, 'm'));
-  return older === -1 ? text : text.slice(0, older);
+function piFiles() {
+  const read = file => fs.readFileSync(pi(file), 'utf8');
+  const { name, version, piConfig } = JSON.parse(read('package.json'));
+  const changelog = read('CHANGELOG.md');
+  const major = version.split('.')[0];
+  const older = changelog.search(new RegExp(`^## \\[(?!${major}\\.)`, 'm'));
+  const files = [
+    'README.md',
+    ...fs
+      .readdirSync(pi('docs'))
+      .filter(file => file.endsWith('.md'))
+      .map(file => `docs/${file}`),
+    'dist/modes/interactive/theme/dark.json',
+    'dist/modes/interactive/theme/light.json',
+    'dist/core/export-html/template.html',
+    'dist/core/export-html/template.css',
+    'dist/core/export-html/template.js',
+    'dist/core/export-html/vendor/marked.min.js',
+    'dist/core/export-html/vendor/marked-cjk-friendly.min.js',
+    'dist/core/export-html/vendor/highlight.min.js'
+  ];
+  return {
+    '/pi/package.json': JSON.stringify({ name, version, piConfig }),
+    '/pi/CHANGELOG.md': older === -1 ? changelog : changelog.slice(0, older),
+    ...Object.fromEntries(files.map(file => [`/pi/${file}`, read(file)]))
+  };
 }
-
-const PI_DIST = /pi-coding-agent[\\/]dist[\\/]/;
-const REPLACEMENTS = [
-  [/[\\/]utils[\\/]photon\.js$/, shim('photon.js')],
-  [/[\\/]utils[\\/]clipboard(-image)?\.js$/, shim('clipboard.js')],
-  [/[\\/]utils[\\/]tools-manager\.js$/, shim('tools-manager.js')],
-  [/[\\/]utils[\\/]open-browser\.js$/, shim('open-browser.js')]
-];
 
 const timers = shim('node-timers.js');
 
 module.exports = {
   node: { __dirname: 'mock' },
   resolve: {
-    alias: { ...BUILTINS, ...PACKAGES }
+    alias: {
+      ...BUILTINS,
+      ...REPLACED,
+      // For the pi modules that the exports map hides.
+      'pi-coding-agent-package': piPackageDir
+    }
   },
   module: {
     parser: { javascript: { url: false } },
     rules: [{ test: /photon_rs_bg\.wasm$/, type: 'asset/resource' }]
   },
   plugins: [
+    // An alias does not apply to a request with a scheme.
     new NormalModuleReplacementPlugin(/^node:/, resource => {
       const target = BUILTINS[resource.request.slice(5)];
       if (target) {
         resource.request = target;
       }
     }),
-    new NormalModuleReplacementPlugin(PI_DIST, resource => {
-      const data = resource.createData;
-      if (!data?.resource || !PI_DIST.test(data.resource)) {
-        return;
-      }
-      for (const [pattern, file] of REPLACEMENTS) {
-        if (pattern.test(data.resource)) {
-          data.resource = file;
-          data.request = file;
-          data.userRequest = file;
-        }
-      }
-    }),
     new DefinePlugin({
       'import.meta.url': JSON.stringify('file:///pi/dist/index.js'),
-      // The fs shim seeds them, by path: pi reads them with readFileSync.
-      __PI_FILES__: JSON.stringify({
-        '/pi/CHANGELOG.md': currentChangelog(),
-        ...Object.fromEntries(
-          EXPORT_HTML_FILES.map(file => [
-            `/pi/${file}`,
-            fs.readFileSync(path.join(piPackageDir, file), 'utf8')
-          ])
-        )
-      })
+      __PI_FILES__: JSON.stringify(piFiles())
     }),
     new ProvidePlugin({
       Buffer: [require.resolve('buffer/'), 'Buffer'],

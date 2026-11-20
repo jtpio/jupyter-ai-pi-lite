@@ -152,14 +152,10 @@ export class PiHost {
       this._revert(contentsPath)
     );
     this._mirror = new DriveMirror(this._operations);
-    (fs as unknown as { drive: DriveOperations }).drive = this._operations;
+    fs.drive = this._operations;
     this._credentials = new PiCredentials(options.secrets);
     this._credentials.changed.connect(() => this._configChanged.emit());
-    (
-      childProcess as unknown as {
-        commands: Map<string, ReturnType<typeof fdCommand>>;
-      }
-    ).commands.set('fd', fdCommand(this._operations));
+    childProcess.commands.set('fd', fdCommand(this._operations));
     this.ready = restoreAgentDir({
       contents,
       drive: this._operations,
@@ -254,9 +250,7 @@ export class PiHost {
    */
   createShell(): ShellRunner | undefined {
     const { commands } = this._options.app;
-    return hasCockleShell(commands)
-      ? new ShellRunner(commands, this._operations)
-      : undefined;
+    return hasCockleShell(commands) ? new ShellRunner(commands) : undefined;
   }
 
   /**
@@ -440,6 +434,14 @@ export class PiHost {
       }
       if (cli?.error) {
         diagnostics.push({ type: 'error', message: cli.error });
+      }
+      // As in pi's main.js: a fallback to another model is a warning. Without
+      // a model, the message is the login guidance.
+      if (created.modelFallbackMessage && created.session.model) {
+        diagnostics.push({
+          type: 'warning',
+          message: created.modelFallbackMessage
+        });
       }
       return { ...created, services, diagnostics };
     };
