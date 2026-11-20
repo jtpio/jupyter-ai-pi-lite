@@ -254,9 +254,7 @@ export class PiHost {
    */
   createShell(): ShellRunner | undefined {
     const { commands } = this._options.app;
-    return hasCockleShell(commands)
-      ? new ShellRunner(commands, this._operations)
-      : undefined;
+    return hasCockleShell(commands) ? new ShellRunner(commands) : undefined;
   }
 
   /**

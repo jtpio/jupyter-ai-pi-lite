@@ -6,10 +6,8 @@ import {
   type ToolDefinition
 } from '@earendil-works/pi-coding-agent';
 import type { CommandRegistry } from '@lumino/commands';
-import path from 'path';
 
-import type { DriveOperations } from './drive';
-import { DRIVE, toContentsPath } from './vfs';
+import { DRIVE } from './vfs';
 
 const SHELL_COMMANDS = {
   execute: '@jupyterlite/terminal:execute-shell',
@@ -26,12 +24,11 @@ export const ANSI_PATTERN =
 
 const COCKLE_DESCRIPTION =
   'Execute a command line in cockle, the in-browser shell of JupyterLite (WebAssembly builds of common tools), in the current working directory. ' +
-  'Pipes (|), command lists (; or newlines) and file redirections (>, >>, 2>, <) are supported. ' +
-  'Not supported: && and || (run the commands in separate calls), command substitution ($(...) or backticks), $VAR expansion, python, node, pip or network access. ' +
-  'stdout and stderr both go to the output (2>&1 has no effect). ' +
+  'Pipes (|), command lists (;, &&, || or newlines), $VAR expansion, here documents and file redirections (>, >>, 2>, 2>&1, <) are supported. ' +
+  'Not supported: command substitution ($(...) or backticks), \\ escapes, background jobs, python, node, pip or network access. ' +
   'Commands read an empty stdin. ' +
   'Only /drive is shared with the file tools, the kernels and JupyterLab. ' +
-  'Available commands include the coreutils (ls, cat, head, tail, wc, mkdir, cp, mv, rm, touch, sort, uniq, tr, cut, seq, date, stat...), grep, sed, tree and git; run "cockle-config command" to list them all. ' +
+  'Available commands include the coreutils (ls, cat, head, tail, wc, mkdir, cp, mv, rm, touch, sort, uniq, tr, cut, seq, date, stat...), grep, sed and the commands that the site adds (for example tree or git); run "cockle-config command" to list them all. ' +
   `Returns stdout and stderr. Output is truncated to the last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first); the full output is then saved to a /tmp file that only the read and grep tools can open. ` +
   'Optionally provide a timeout in seconds.';
 
@@ -40,13 +37,11 @@ const COCKLE_DESCRIPTION =
  */
 // eslint-disable-next-line no-control-regex
 const KEYS = /[\t\x04\x0c\x1b\x7f]/;
-const NON_ASCII = /[\u0080-\uffff]/;
 const WORD = / *((?:'[^']*'|"[^"]*"|[^\s;&|<>'"])*)/y;
 /**
- * cockle writes each byte above 0x7f of a redirected output as a character
- * from U+FF80 to U+FFFF.
+ * A redirection operator, with the descriptor that it duplicates (`2>&1`).
  */
-const BYTE_RUNS = /[\uff80-\uffff]+/g;
+const REDIRECTION = /(?:<<<|<<-?|[<>]+)(?:&\d+)?/y;
 /**
  * Spaces and line continuations around a part.
  */
@@ -55,9 +50,9 @@ const PADDING = /^(?:\s|\\\n)+|(?:\s|\\\n)+$/g;
 interface IShellPart {
   code: string;
   /**
-   * The files that the part writes with `>` or `>>`.
+   * The part runs after a success (`&&`) or a failure (`||`) only.
    */
-  targets?: string[];
+  condition?: '&&' | '||';
 }
 
 interface IShellResult {
@@ -84,13 +79,13 @@ function quote(value: string): string {
 }
 
 /**
- * The word after the spaces at `start`, without its quotes, the index after
- * it, and the word as written.
+ * The word after the spaces at `start`, without its quotes, and the index
+ * after it.
  */
-function readWord(text: string, start: number): [string, number, string] {
+function readWord(text: string, start: number): [string, number] {
   WORD.lastIndex = start;
   const raw = WORD.exec(text)![1];
-  return [raw.replace(/'([^']*)'|"([^"]*)"/g, '$1$2'), WORD.lastIndex, raw];
+  return [raw.replace(/'([^']*)'|"([^"]*)"/g, '$1$2'), WORD.lastIndex];
 }
 
 /**
@@ -111,15 +106,15 @@ function exitCode(code: string): number | null | undefined {
 
 /**
  * The pipelines of a command line, each run on its own: cockle has no `#`
- * comments and echoes the lines of a multi-line command. A heredoc body stays
- * as written with its command. Throws for what cockle would run wrong, or
- * wait on until the timeout.
+ * comments, echoes the lines of a multi-line command, and its `exit` in a
+ * list ends the shell. A heredoc body stays as written with its command.
+ * Throws for what cockle would run wrong.
  */
 function commandParts(code: string): IShellPart[] {
   if (KEYS.test(code)) {
     throw new Error(
       'cockle reads a TAB or a control character in a command as a key, so it cannot keep it. ' +
-        'Use the write tool for files that contain tabs; sed and printf understand \\t, and cut splits on TAB by default.'
+        'Use the write tool for files that contain tabs; sed understands \\t, and cut splits on TAB by default.'
     );
   }
   const text = `${code.replace(/\r\n?/g, '\n')}\n`;
@@ -136,7 +131,7 @@ function commandParts(code: string): IShellPart[] {
     }
     piped = true;
   };
-  const close = () => {
+  const close = (condition?: IShellPart['condition']) => {
     if (part.code.trim()) {
       endCommand();
       part.code = part.code.replace(PADDING, '');
@@ -144,8 +139,10 @@ function commandParts(code: string): IShellPart[] {
         throw new Error('The command ends with |');
       }
       parts.push(part);
+    } else if (condition) {
+      throw new Error(`The command has no command before ${condition}`);
     }
-    part = { code: '' };
+    part = { code: '', condition };
     piped = input = false;
   };
   for (let i = 0; i < text.length; i++) {
@@ -168,7 +165,10 @@ function commandParts(code: string): IShellPart[] {
         part.code += char;
         continue;
       }
-      close();
+      // After `&&` or `||`, the next line continues the list.
+      if (part.code.trim() || !part.condition) {
+        close();
+      }
       for (const { part: target, delimiter } of heredocs.splice(0)) {
         const start = text.indexOf(`\n${delimiter}\n`, i);
         if (start < 0 || delimiter.includes('\n')) {
@@ -176,62 +176,32 @@ function commandParts(code: string): IShellPart[] {
         }
         const end = start + delimiter.length + 1;
         target.code += text.slice(i, end);
-        if (NON_ASCII.test(target.code)) {
-          throw new Error(
-            'cockle corrupts text that is not ASCII in a here document. Write such files with the write or edit tool.'
-          );
-        }
         i = end;
       }
       continue;
-    } else if (text.startsWith('&>', i)) {
-      const append = text[i + 2] === '>';
-      const [word, end] = readWord(text, i + (append ? 3 : 2));
-      if (word !== '/dev/null') {
-        throw new Error(
-          'cockle has no &> redirect: use > FILE 2> FILE2, or > /dev/null 2> /dev/null'
-        );
-      }
-      part.code += '> /dev/null 2> /dev/null';
-      i = end - 1;
-      continue;
     } else if (text.startsWith('&&', i) || text.startsWith('||', i)) {
-      // cockle reads them as arguments of the command before.
-      throw new Error(
-        `cockle has no ${text.slice(i, i + 2)}: run the commands in separate calls`
-      );
-    } else if (char === ';' || char === '&') {
+      close(text.slice(i, i + 2) as IShellPart['condition']);
+      i++;
+      continue;
+    } else if (char === ';' || (char === '&' && text[i + 1] !== '>')) {
       close();
       continue;
     } else if (char === '|') {
       endCommand();
     } else if (char === '<' || char === '>') {
-      const duplicate = /^&\d+/.exec(text.slice(i + 1));
-      if (duplicate) {
-        // stdout and stderr both go to the output: drop 2>&1 or >&2.
-        part.code = part.code.replace(/\d+$/, '');
-        i += duplicate[0].length;
-        continue;
-      }
-      const [token] = /^(?:<<-|<+|>+)/.exec(text.slice(i))!;
+      REDIRECTION.lastIndex = i;
+      const [token] = REDIRECTION.exec(text)!;
+      part.code += token;
       i += token.length - 1;
-      const [word, end, raw] = readWord(text, i + 1);
-      if (char === '<') {
-        input ||= !piped;
-      } else if (word && word !== '/dev/null') {
-        (part.targets ??= []).push(word);
-      }
+      input ||= char === '<' && !piped;
       if (token === '<<' || token === '<<-') {
-        if (!word) {
+        const [delimiter, end] = readWord(text, i + 1);
+        if (!delimiter) {
           throw new Error('cockle needs a here document delimiter word');
         }
-        // cockle reads `<<'EOF'` as one word, not as a heredoc.
-        part.code += `${token} ${raw}`;
-        heredocs.push({ part, delimiter: word });
+        part.code += text.slice(i + 1, end);
+        heredocs.push({ part, delimiter });
         i = end - 1;
-      } else {
-        // cockle reads `>'f'` as one word, not as a redirect.
-        part.code += /\s/.test(text[i + 1]) ? token : `${token} `;
       }
       continue;
     }
@@ -290,13 +260,8 @@ export function abortable<T>(
  * commands wait in a queue.
  */
 export class ShellRunner {
-  /**
-   * `files` reads and writes the drive, to repair the files that commands
-   * write with `>`.
-   */
-  constructor(commands: CommandRegistry, files: DriveOperations) {
+  constructor(commands: CommandRegistry) {
     this._commands = commands;
-    this._files = files;
   }
 
   /**
@@ -363,6 +328,9 @@ export class ShellRunner {
       let output = '';
       let last = moved;
       for (const part of parts) {
+        if (part.condition && (part.condition === '&&') !== last.success) {
+          continue;
+        }
         const exit = exitCode(part.code);
         if (exit !== undefined) {
           // cockle's exit stops the shell: the command would never finish.
@@ -378,9 +346,6 @@ export class ShellRunner {
         output += withoutEcho(last.output, part.code);
         if (last.status === 'timeout') {
           break;
-        }
-        for (const target of part.targets ?? []) {
-          await this._repair(path.posix.resolve(cwd, target));
         }
       }
       return { ...last, output };
@@ -425,28 +390,6 @@ export class ShellRunner {
   }
 
   /**
-   * Decode the text that is not ASCII of a drive file written by cockle.
-   */
-  private async _repair(file: string): Promise<void> {
-    if (toContentsPath(file) === null) {
-      return;
-    }
-    try {
-      const text = (await this._files.readFile(file)).toString('utf8');
-      const repaired = text.replace(BYTE_RUNS, run =>
-        new TextDecoder().decode(
-          Uint8Array.from(run, char => char.charCodeAt(0) & 0xff)
-        )
-      );
-      if (repaired !== text) {
-        await this._files.writeFile(file, repaired);
-      }
-    } catch {
-      // The command did not write the file.
-    }
-  }
-
-  /**
    * Shut down a shell; the next command starts a new one.
    */
   private async _abandon(shellName: string): Promise<void> {
@@ -461,7 +404,6 @@ export class ShellRunner {
   }
 
   private _commands: CommandRegistry;
-  private _files: DriveOperations;
   private _shellName?: string;
   private _starting?: Promise<string>;
   private _generation = 0;
