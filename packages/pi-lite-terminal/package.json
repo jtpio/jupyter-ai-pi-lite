@@ -45,7 +45,7 @@
   "dependencies": {
     "@jupyter-ai/pi-lite": "^0.1.2",
     "@jupyterlab/application": "^4.5.8",
-    "@jupyterlite/terminal": "^1.6.2"
+    "@jupyterlite/terminal": "^1.8.0"
   },
   "devDependencies": {
     "@jupyter/builder": "^1.2.2",

@@ -472,8 +472,16 @@ export async function runTerminal(
     initTheme(runtime.services.settingsManager.getTheme(), false);
     const mode = new InteractiveMode(runtime, {
       terminal,
-      startupDiagnostics: [...args.diagnostics, ...runtime.diagnostics],
-      modelFallbackMessage: runtime.modelFallbackMessage,
+      // Taken, not read: pi then shows only the new diagnostics of the next
+      // sessions (`/new`, `/resume`).
+      startupDiagnostics: [
+        ...args.diagnostics,
+        ...runtime.takeUnreportedDiagnostics()
+      ],
+      // A fallback to another model is one of the diagnostics.
+      modelFallbackMessage: runtime.session.model
+        ? undefined
+        : runtime.modelFallbackMessage,
       initialMessage: `${files.text}${message ?? ''}`,
       initialImages: files.images,
       initialMessages: messages,

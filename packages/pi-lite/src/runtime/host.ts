@@ -441,6 +441,14 @@ export class PiHost {
       if (cli?.error) {
         diagnostics.push({ type: 'error', message: cli.error });
       }
+      // As in pi's main.js: a fallback to another model is a warning. Without
+      // a model, the message is the login guidance.
+      if (created.modelFallbackMessage && created.session.model) {
+        diagnostics.push({
+          type: 'warning',
+          message: created.modelFallbackMessage
+        });
+      }
       return { ...created, services, diagnostics };
     };
   }

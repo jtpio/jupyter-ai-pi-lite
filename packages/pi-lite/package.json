@@ -47,10 +47,10 @@
     "watch:labextension": "jupyter-builder watch ."
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^1.5.0",
-    "@earendil-works/pi-coding-agent": "^1.5.0",
-    "@earendil-works/pi-mcp": "^1.5.0",
-    "@earendil-works/pi-tui": "^1.5.0",
+    "@earendil-works/pi-ai": "^1.6.0",
+    "@earendil-works/pi-coding-agent": "^1.6.0",
+    "@earendil-works/pi-mcp": "^1.6.0",
+    "@earendil-works/pi-tui": "^1.6.0",
     "@jupyter-ai/agent-lite": "^0.21.0",
     "@jupyter-ai/persona-manager": "^0.4.0",
     "@jupyter/chat": "^0.26.0",
@@ -61,7 +61,7 @@
     "@jupyterlab/services": "^7.5.8",
     "@jupyterlab/settingregistry": "^4.5.8",
     "@jupyterlab/translation": "^4.5.8",
-    "@jupyterlite/cockle": "^1.7.1",
+    "@jupyterlite/cockle": "^1.9.1",
     "@lumino/commands": "^2.3.2",
     "@lumino/coreutils": "^2.2.1",
     "@lumino/messaging": "^2.0.3",
