@@ -1,0 +1,10 @@
+{
+  "providers": {
+    "demo": {
+      "api": "openai-completions",
+      "baseUrl": "http://localhost:8765/v1",
+      "apiKey": "none",
+      "models": [{ "id": "pi-demo" }]
+    }
+  }
+}

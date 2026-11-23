@@ -155,3 +155,13 @@ demo/cockle_wasm_env
 demo/cockle-config.json
 demo/.cockle_temp
 demo/cockle-files.txt
+
+# Screencast build and recording files
+demo/screencast/cockle_wasm_env
+demo/screencast/cockle-config.json
+demo/screencast/.cockle_temp
+demo/screencast/cockle-files.txt
+demo/screencast/.autokast
+demo/screencast/package-lock.json
+demo/screencast/*.mp4
+demo/screencast/*.png

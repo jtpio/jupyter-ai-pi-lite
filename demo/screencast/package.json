@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "uv run --project .. jupyter lite build",
+    "serve": "node server.mjs dist",
+    "record": "autokast record pi-terminal.ts -o pi-terminal.mp4"
+  },
+  "devDependencies": {
+    "autokast": "^0.3.0",
+    "playwright": "^1.60"
+  }
+}
