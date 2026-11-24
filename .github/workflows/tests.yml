@@ -37,7 +37,9 @@ jobs:
         env:
           YARN_ENABLE_IMMUTABLE_INSTALLS: 0
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-        run: jlpm install
+        run: |
+          jlpm install
+          jlpm build
 
       - name: Set up browser cache
         uses: actions/cache@v5

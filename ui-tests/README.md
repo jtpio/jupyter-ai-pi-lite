@@ -15,6 +15,9 @@ The default configuration will produce video for failing tests and an HTML repor
 The tests do not need a model: they mock the requests to an OpenAI-compatible
 endpoint (see [test-utils.ts](./tests/test-utils.ts)).
 
+The [extension](./extension) folder contains a small extension that gives a
+model provider to pi, as another extension does. The test server loads it.
+
 ## Run the tests
 
 > All commands are assumed to be executed from the root directory
@@ -29,11 +32,12 @@ python ./scripts/dev_install.py
 
 > Check the extension is installed in JupyterLab.
 
-2. Install test dependencies (needed only once):
+2. Install test dependencies and build the test extension (needed only once):
 
 ```sh
 cd ./ui-tests
 jlpm install
+jlpm build
 jlpm playwright install
 cd ..
 ```

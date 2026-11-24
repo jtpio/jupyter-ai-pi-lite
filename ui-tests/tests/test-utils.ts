@@ -19,9 +19,20 @@ export const ENDPOINT = {
 };
 
 /**
+ * The provider that the test extension gives to pi (see `../extension`), and
+ * the settings that set it up. The tests mock its requests too.
+ */
+export const CUSTOM_PROVIDER = {
+  id: 'test-provider',
+  baseUrl: 'http://localhost:11435/v1',
+  model: 'custom-model',
+  settings: { 'pi-lite-test-provider:plugin': { enabled: true } }
+};
+
+/**
  * The name of a new chat.
  */
-const CHAT_NAME = 'untitled.chat';
+export const CHAT_NAME = 'untitled.chat';
 
 /**
  * The label of the command that opens the provider dialog.
@@ -37,6 +48,7 @@ export type Reply = string | { tool: string; args: Record<string, unknown> };
  * The body of a request to the mocked model.
  */
 export interface IModelRequest {
+  model: string;
   messages: { role: string; content: unknown }[];
 }
 
@@ -86,15 +98,16 @@ export async function mockOpenRouter(
 }
 
 /**
- * Mock the model of the endpoint: each request gets the next reply. Returns
- * the requests that the model received.
+ * Mock the model of a provider (default: the endpoint): each request gets the
+ * next reply. Returns the requests that the model received.
  */
 export async function mockModel(
   page: IJupyterLabPageFixture,
-  replies: Reply[]
+  replies: Reply[],
+  baseUrl = ENDPOINT.baseUrl
 ): Promise<IModelRequest[]> {
   const requests: IModelRequest[] = [];
-  await page.route(`${ENDPOINT.baseUrl}/chat/completions`, route => {
+  await page.route(`${baseUrl}/chat/completions`, route => {
     requests.push(route.request().postDataJSON());
     return route.fulfill({
       contentType: 'text/event-stream',
